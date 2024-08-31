@@ -100,7 +100,7 @@ def test_default_pipeline_names(
     # mock the correct destinations (never do that in normal code)
     with p.managed_state():
         p._set_destinations(
-            destination=Destination.from_reference(destination_config.destination),
+            destination=Destination.from_reference(destination_config.destination_type),
             staging=(
                 Destination.from_reference(destination_config.staging)
                 if destination_config.staging
@@ -162,13 +162,12 @@ def test_default_schema_name(
         for idx, alpha in [(0, "A"), (0, "B"), (0, "C")]
     ]
 
-    p = dlt.pipeline(
+    p = destination_config.setup_pipeline(
         "test_default_schema_name",
-        TEST_STORAGE_ROOT,
-        destination=destination_config.destination,
-        staging=destination_config.staging,
         dataset_name=dataset_name,
+        pipelines_dir=TEST_STORAGE_ROOT,
     )
+
     p.config.use_single_dataset = use_single_dataset
     p.extract(data, table_name="test", schema=Schema("default"))
     p.normalize()
@@ -207,7 +206,7 @@ def test_attach_pipeline(destination_config: DestinationTestConfiguration) -> No
     destination_config.setup()
     info = dlt.run(
         _data(),
-        destination=destination_config.destination,
+        destination=destination_config.destination_factory(),
         staging=destination_config.staging,
         dataset_name="specific" + uniq_id(),
         loader_file_format=destination_config.file_format,
@@ -283,7 +282,7 @@ def test_run_dev_mode(destination_config: DestinationTestConfiguration) -> None:
     p = dlt.pipeline(dev_mode=True)
     info = p.run(
         _data(),
-        destination=destination_config.destination,
+        destination=destination_config.destination_factory(),
         staging=destination_config.staging,
         dataset_name="iteration" + uniq_id(),
         loader_file_format=destination_config.file_format,
@@ -373,7 +372,7 @@ def test_evolve_schema(destination_config: DestinationTestConfiguration) -> None
     assert "new_column" not in schema.get_table("simple_rows")["columns"]
 
     # lets violate unique constraint on postgres, redshift and BQ ignore unique indexes
-    if destination_config.destination == "postgres":
+    if destination_config.destination_type == "postgres":
         assert p.dataset_name == dataset_name
         err_info = p.run(
             source(1).with_resources("simple_rows"),
@@ -458,7 +457,7 @@ def test_source_max_nesting(destination_config: DestinationTestConfiguration) ->
 
     info = dlt.run(
         complex_data(),
-        destination=destination_config.destination,
+        destination=destination_config.destination_factory(),
         staging=destination_config.staging,
         dataset_name="ds_" + uniq_id(),
         loader_file_format=destination_config.file_format,
@@ -849,11 +848,11 @@ def test_parquet_loading(destination_config: DestinationTestConfiguration) -> No
     column_schemas = deepcopy(TABLE_UPDATE_COLUMNS_SCHEMA)
 
     # parquet on bigquery and clickhouse does not support JSON but we still want to run the test
-    if destination_config.destination in ["bigquery"]:
+    if destination_config.destination_type in ["bigquery"]:
         column_schemas["col9_null"]["data_type"] = column_schemas["col9"]["data_type"] = "text"
 
     # duckdb 0.9.1 does not support TIME other than 6
-    if destination_config.destination in ["duckdb", "motherduck"]:
+    if destination_config.destination_type in ["duckdb", "motherduck"]:
         column_schemas["col11_precision"]["precision"] = 0
         # also we do not want to test col4_precision (datetime) because
         # those timestamps are not TZ aware in duckdb and we'd need to
@@ -862,7 +861,7 @@ def test_parquet_loading(destination_config: DestinationTestConfiguration) -> No
         column_schemas["col4_precision"]["precision"] = 6
 
     # drop TIME from databases not supporting it via parquet
-    if destination_config.destination in [
+    if destination_config.destination_type in [
         "redshift",
         "athena",
         "synapse",
@@ -876,7 +875,7 @@ def test_parquet_loading(destination_config: DestinationTestConfiguration) -> No
         column_schemas.pop("col11_null")
         column_schemas.pop("col11_precision")
 
-    if destination_config.destination in ("redshift", "dremio"):
+    if destination_config.destination_type in ("redshift", "dremio"):
         data_types.pop("col7_precision")
         column_schemas.pop("col7_precision")
 
@@ -923,10 +922,10 @@ def test_parquet_loading(destination_config: DestinationTestConfiguration) -> No
         assert_all_data_types_row(
             db_row,
             schema=column_schemas,
-            parse_complex_strings=destination_config.destination
+            parse_complex_strings=destination_config.destination_type
             in ["snowflake", "bigquery", "redshift"],
-            allow_string_binary=destination_config.destination == "clickhouse",
-            timestamp_precision=3 if destination_config.destination in ("athena", "dremio") else 6,
+            allow_string_binary=destination_config.destination_type == "clickhouse",
+            timestamp_precision=3 if destination_config.destination_type in ("athena", "dremio") else 6,
         )
 
 
@@ -1144,7 +1143,7 @@ def simple_nested_pipeline(
     p = dlt.pipeline(
         pipeline_name=f"pipeline_{dataset_name}",
         dev_mode=dev_mode,
-        destination=destination_config.destination,
+        destination=destination_config.destination_factory(),
         staging=destination_config.staging,
         dataset_name=dataset_name,
     )
