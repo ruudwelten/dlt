@@ -279,7 +279,10 @@ def test_all_data_types(destination_config: DestinationTestConfiguration) -> Non
     ) and destination_config.file_format in ("parquet", "jsonl"):
         # Redshift copy doesn't support TIME column
         exclude_types.append("time")
-    if destination_config.destination_type == "synapse" and destination_config.file_format == "parquet":
+    if (
+        destination_config.destination_type == "synapse"
+        and destination_config.file_format == "parquet"
+    ):
         # TIME columns are not supported for staged parquet loads into Synapse
         exclude_types.append("time")
     if destination_config.destination_type in (
@@ -291,7 +294,10 @@ def test_all_data_types(destination_config: DestinationTestConfiguration) -> Non
     ):
         # Redshift can't load fixed width binary columns from parquet
         exclude_columns.append("col7_precision")
-    if destination_config.destination_type == "databricks" and destination_config.file_format == "jsonl":
+    if (
+        destination_config.destination_type == "databricks"
+        and destination_config.file_format == "jsonl"
+    ):
         exclude_types.extend(["decimal", "binary", "wei", "complex", "date"])
         exclude_columns.append("col1_precision")
 
