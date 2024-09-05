@@ -51,6 +51,7 @@ IMPLEMENTED_DESTINATIONS = {
     "databricks",
     "clickhouse",
     "dremio",
+    "sqlalchemy",
 }
 NON_SQL_DESTINATIONS = {
     "filesystem",

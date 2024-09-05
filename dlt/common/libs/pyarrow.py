@@ -29,6 +29,7 @@ try:
     import pyarrow.parquet
     import pyarrow.compute
     import pyarrow.dataset
+    from pyarrow.parquet import ParquetFile
 except ModuleNotFoundError:
     raise MissingDependencyException(
         "dlt pyarrow helpers",
