@@ -79,7 +79,10 @@ def test_staging_load(destination_config: DestinationTestConfiguration) -> None:
     if destination_config.supports_merge:
         num_sql_jobs += 1
     # sql job is used to copy parquet to Athena Iceberg table (_dlt_pipeline_state)
-    if destination_config.destination == "athena" and destination_config.table_format == "iceberg":
+    if (
+        destination_config.destination_type == "athena"
+        and destination_config.table_format == "iceberg"
+    ):
         num_sql_jobs += 1
     assert len(package_info.jobs["completed_jobs"]) == num_jobs + num_sql_jobs
     assert (
@@ -226,7 +229,7 @@ def test_truncate_staging_dataset(destination_config: DestinationTestConfigurati
     with staging_client:
         # except Athena + Iceberg which does not store tables in staging dataset
         if (
-            destination_config.destination == "athena"
+            destination_config.destination_type == "athena"
             and destination_config.table_format == "iceberg"
         ):
             table_count = 0
@@ -249,7 +252,7 @@ def test_truncate_staging_dataset(destination_config: DestinationTestConfigurati
     _, staging_client = pipeline._get_destination_clients(pipeline.default_schema)
     with staging_client:
         # except for Athena which does not delete staging destination tables
-        if destination_config.destination == "athena":
+        if destination_config.destination_type == "athena":
             if destination_config.table_format == "iceberg":
                 table_count = 0
             else:
